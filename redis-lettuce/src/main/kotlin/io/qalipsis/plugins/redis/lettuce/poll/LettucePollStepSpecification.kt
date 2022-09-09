@@ -5,6 +5,7 @@ import io.qalipsis.api.constraints.PositiveOrZeroDuration
 import io.qalipsis.api.scenario.StepSpecificationRegistry
 import io.qalipsis.api.steps.AbstractStepSpecification
 import io.qalipsis.api.steps.BroadcastSpecification
+import io.qalipsis.api.steps.ConfigurableStepSpecification
 import io.qalipsis.api.steps.LoopableSpecification
 import io.qalipsis.api.steps.SingletonConfiguration
 import io.qalipsis.api.steps.SingletonStepSpecification
@@ -12,7 +13,6 @@ import io.qalipsis.api.steps.SingletonType
 import io.qalipsis.api.steps.StepMonitoringConfiguration
 import io.qalipsis.api.steps.StepSpecification
 import io.qalipsis.api.steps.UnicastSpecification
-import io.qalipsis.plugins.redis.lettuce.Flattenable
 import io.qalipsis.plugins.redis.lettuce.RedisLettuceScenarioSpecification
 import io.qalipsis.plugins.redis.lettuce.RedisRecord
 import io.qalipsis.plugins.redis.lettuce.configuration.RedisConnectionConfiguration
@@ -34,7 +34,8 @@ import javax.validation.constraints.NotBlank
  */
 @Spec
 interface LettucePollStepSpecification<V : Any> :
-    StepSpecification<Unit, LettucePollResult<V>, Flattenable<RedisRecord<V>, LettucePollResult<V>>>,
+    StepSpecification<Unit, LettucePollResult<V>, LettucePollStepSpecification<V>>,
+    ConfigurableStepSpecification<Unit, LettucePollResult<V>, LettucePollStepSpecification<V>>,
     SingletonStepSpecification,
     LoopableSpecification, UnicastSpecification, BroadcastSpecification {
 
@@ -80,11 +81,9 @@ interface LettucePollStepSpecification<V : Any> :
  * @author Gabriel Moraes
  */
 @Spec
-internal class LettucePollStepSpecificationImpl<V : Any> internal constructor(
-    redisLettuceMethod: RedisLettuceScanMethod
-) :
-    AbstractStepSpecification<Unit, LettucePollResult<V>, Flattenable<RedisRecord<V>, LettucePollResult<V>>>(),
-    Flattenable<RedisRecord<V>, LettucePollResult<V>>, LettucePollStepSpecification<V> {
+internal class LettucePollStepSpecificationImpl<V : Any>(redisLettuceMethod: RedisLettuceScanMethod) :
+    AbstractStepSpecification<Unit, LettucePollResult<V>, LettucePollStepSpecification<V>>(),
+    LettucePollStepSpecification<V> {
 
     override val singletonConfiguration: SingletonConfiguration = SingletonConfiguration(SingletonType.UNICAST)
 
@@ -98,8 +97,6 @@ internal class LettucePollStepSpecificationImpl<V : Any> internal constructor(
     internal var pollDelay: Duration? = Duration.ofSeconds(10)
 
     internal var monitoringConfig = StepMonitoringConfiguration()
-
-    internal var flattenOutput = false
 
     override fun connection(configBlock: RedisConnectionConfiguration.() -> Unit) {
         connection.configBlock()
@@ -125,13 +122,6 @@ internal class LettucePollStepSpecificationImpl<V : Any> internal constructor(
         singletonConfiguration.bufferSize = bufferSize
         singletonConfiguration.idleTimeout = idleTimeout
     }
-
-    override fun flatten(): StepSpecification<Unit, RedisRecord<V>, *> {
-        flattenOutput = true
-
-        @Suppress("UNCHECKED_CAST")
-        return this as StepSpecification<Unit, RedisRecord<V>, *>
-    }
 }
 
 /**
@@ -155,7 +145,7 @@ enum class RedisLettuceScanMethod {
  */
 fun RedisLettuceScenarioSpecification.pollScan(
     configurationBlock: LettucePollStepSpecification<String>.() -> Unit
-): Flattenable<RedisRecord<String>, LettucePollResult<String>> {
+): LettucePollStepSpecification<String> {
     val step = LettucePollStepSpecificationImpl<String>(RedisLettuceScanMethod.SCAN)
     step.configurationBlock()
 
@@ -175,7 +165,7 @@ fun RedisLettuceScenarioSpecification.pollScan(
  */
 fun RedisLettuceScenarioSpecification.pollSscan(
     configurationBlock: LettucePollStepSpecification<String>.() -> Unit
-): Flattenable<RedisRecord<String>, LettucePollResult<String>> {
+): LettucePollStepSpecification<String> {
     val step = LettucePollStepSpecificationImpl<String>(RedisLettuceScanMethod.SSCAN)
     step.configurationBlock()
 
@@ -195,7 +185,7 @@ fun RedisLettuceScenarioSpecification.pollSscan(
  */
 fun RedisLettuceScenarioSpecification.pollZscan(
     configurationBlock: LettucePollStepSpecification<Pair<Double, String>>.() -> Unit
-): Flattenable<RedisRecord<Pair<Double, String>>, LettucePollResult<Pair<Double, String>>> {
+): LettucePollStepSpecification<Pair<Double, String>> {
     val step = LettucePollStepSpecificationImpl<Pair<Double, String>>(RedisLettuceScanMethod.ZSCAN)
     step.configurationBlock()
 
@@ -215,7 +205,7 @@ fun RedisLettuceScenarioSpecification.pollZscan(
  */
 fun RedisLettuceScenarioSpecification.pollHscan(
     configurationBlock: LettucePollStepSpecification<Pair<String, String>>.() -> Unit
-): Flattenable<RedisRecord<Pair<String, String>>, LettucePollResult<Pair<String, String>>> {
+): LettucePollStepSpecification<Pair<String, String>> {
     val step = LettucePollStepSpecificationImpl<Pair<String, String>>(RedisLettuceScanMethod.HSCAN)
     step.configurationBlock()
 

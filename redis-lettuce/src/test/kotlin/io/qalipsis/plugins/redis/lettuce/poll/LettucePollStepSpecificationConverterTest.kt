@@ -6,29 +6,21 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
-import assertk.assertions.isNull
 import assertk.assertions.isSameAs
 import assertk.assertions.isTrue
 import io.aerisconsulting.catadioptre.getProperty
-import io.aerisconsulting.catadioptre.invokeInvisible
-import io.mockk.every
 import io.mockk.impl.annotations.RelaxedMockK
-import io.mockk.slot
-import io.mockk.spyk
 import io.qalipsis.api.steps.StepCreationContext
 import io.qalipsis.api.steps.StepCreationContextImpl
 import io.qalipsis.api.steps.StepMonitoringConfiguration
-import io.qalipsis.api.steps.datasource.DatasourceObjectConverter
 import io.qalipsis.api.steps.datasource.IterativeDatasourceStep
 import io.qalipsis.api.steps.datasource.processors.NoopDatasourceObjectProcessor
 import io.qalipsis.plugins.redis.lettuce.poll.converters.PollResultSetBatchConverter
-import io.qalipsis.plugins.redis.lettuce.poll.converters.PollResultSetSingleConverter
 import io.qalipsis.plugins.redis.lettuce.poll.converters.RedisToJavaConverter
 import io.qalipsis.plugins.redis.lettuce.poll.scanners.LettuceKeysScanner
 import io.qalipsis.test.assertk.prop
 import io.qalipsis.test.mockk.WithMockk
 import io.qalipsis.test.mockk.relaxedMockk
-import io.qalipsis.test.mockk.verifyOnce
 import io.qalipsis.test.steps.AbstractStepSpecificationConverterTest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -82,15 +74,11 @@ internal class LettucePollStepSpecificationConverterTest :
             it.monitoringConfig = lettucePollMetrics
         }
         val creationContext = StepCreationContextImpl(scenarioSpecification, directedAcyclicGraph, spec)
-        val spiedConverter = spyk(converter, recordPrivateCalls = true)
-
-        val recordsConverter: DatasourceObjectConverter<PollRawResult<*>, out Any> = relaxedMockk()
-        every { spiedConverter["buildConverter"](refEq(spec)) } returns recordsConverter
 
         // when
         runBlocking {
             @Suppress("UNCHECKED_CAST")
-            spiedConverter.convert<Unit, Map<String, *>>(
+            converter.convert<Unit, Map<String, *>>(
                 creationContext as StepCreationContext<LettucePollStepSpecificationImpl<*>>
             )
         }
@@ -108,10 +96,9 @@ internal class LettucePollStepSpecificationConverterTest :
                     prop("resultsChannelFactory").isNotNull()
                 }
                 prop("processor").isNotNull().isInstanceOf(NoopDatasourceObjectProcessor::class)
-                prop("converter").isNotNull().isSameAs(recordsConverter)
+                prop("converter").isNotNull().isInstanceOf(PollResultSetBatchConverter::class)
             }
         }
-        verifyOnce { spiedConverter["buildConverter"](refEq(spec)) }
 
         val channelFactory = creationContext.createdStep!!
             .getProperty<LettuceIterativeReader>("reader")
@@ -137,16 +124,11 @@ internal class LettucePollStepSpecificationConverterTest :
             it.monitoringConfig = lettucePollMetrics
         }
         val creationContext = StepCreationContextImpl(scenarioSpecification, directedAcyclicGraph, spec)
-        val spiedConverter = spyk(converter, recordPrivateCalls = true)
-
-        val recordsConverter: DatasourceObjectConverter<PollRawResult<*>, out Any> = relaxedMockk()
-        val stepIdSlot = slot<String>()
-        every { spiedConverter["buildConverter"](refEq(spec)) } returns recordsConverter
 
         // when
         runBlocking {
             @Suppress("UNCHECKED_CAST")
-            spiedConverter.convert<Unit, Map<String, *>>(
+            converter.convert<Unit, Map<String, *>>(
                 creationContext as StepCreationContext<LettucePollStepSpecificationImpl<*>>
             )
         }
@@ -164,95 +146,9 @@ internal class LettucePollStepSpecificationConverterTest :
                     prop("resultsChannelFactory").isNotNull()
                 }
                 prop("processor").isNotNull().isInstanceOf(NoopDatasourceObjectProcessor::class)
-                prop("converter").isNotNull().isSameAs(recordsConverter)
+                prop("converter").isNotNull().isInstanceOf(PollResultSetBatchConverter::class)
             }
         }
-        verifyOnce { spiedConverter["buildConverter"](refEq(spec)) }
     }
 
-    @Test
-    fun `should build batch converter without monitor and logger`() {
-        // given
-        val spec = LettucePollStepSpecificationImpl<Any>(RedisLettuceScanMethod.ZSCAN)
-
-        // when
-        val converter =
-            converter.invokeInvisible<DatasourceObjectConverter<PollRawResult<*>, out Any>>("buildConverter", spec)
-
-        // then
-        assertThat(converter).isInstanceOf(PollResultSetBatchConverter::class).all {
-            prop("eventPrefix").isEqualTo("redis.lettuce.poll.zscan")
-            prop("meterPrefix").isEqualTo("redis-lettuce-poll-zscan")
-            prop("eventsLogger").isNull()
-            prop("meterRegistry").isNull()
-        }
-    }
-
-    @Test
-    fun `should build batch converter with monitor and logger`() {
-        // given
-        val spec = LettucePollStepSpecificationImpl<Any>(RedisLettuceScanMethod.ZSCAN)
-        spec.monitoring {
-            events = true
-            meters = true
-        }
-
-        // when
-        val converter =
-            converter.invokeInvisible<DatasourceObjectConverter<PollRawResult<*>, out Any>>("buildConverter", spec)
-
-        // then
-        assertThat(converter).isInstanceOf(PollResultSetBatchConverter::class).all {
-            prop("eventPrefix").isEqualTo("redis.lettuce.poll.zscan")
-            prop("meterPrefix").isEqualTo("redis-lettuce-poll-zscan")
-            prop("eventsLogger").isNotNull()
-            prop("meterRegistry").isNotNull()
-        }
-    }
-
-    @Test
-    fun `should build single converter without monitor and logger`() {
-        // given
-        val spec = LettucePollStepSpecificationImpl<Any>(RedisLettuceScanMethod.ZSCAN)
-
-        spec.flatten()
-
-        // when
-        val converter =
-            converter.invokeInvisible<DatasourceObjectConverter<PollRawResult<*>, out Any>>("buildConverter", spec)
-
-        // then
-        assertThat(converter).isInstanceOf(PollResultSetSingleConverter::class).all {
-            prop("eventPrefix").isEqualTo("redis.lettuce.poll.zscan")
-            prop("meterPrefix").isEqualTo("redis-lettuce-poll-zscan")
-            prop("eventsLogger").isNull()
-            prop("meterRegistry").isNull()
-        }
-
-
-    }
-
-    @Test
-    fun `should build single converter with monitor and logger`() {
-        // given
-        val spec = LettucePollStepSpecificationImpl<Any>(RedisLettuceScanMethod.ZSCAN)
-        spec.monitoring {
-            events = true
-            meters = true
-        }
-
-        spec.flatten()
-        // when
-        val converter =
-            converter.invokeInvisible<DatasourceObjectConverter<PollRawResult<*>, out Any>>("buildConverter", spec)
-
-        // then
-        assertThat(converter).isInstanceOf(PollResultSetSingleConverter::class).all {
-            prop("eventPrefix").isEqualTo("redis.lettuce.poll.zscan")
-            prop("meterPrefix").isEqualTo("redis-lettuce-poll-zscan")
-            prop("eventsLogger").isNotNull()
-            prop("meterRegistry").isNotNull()
-        }
-
-    }
 }

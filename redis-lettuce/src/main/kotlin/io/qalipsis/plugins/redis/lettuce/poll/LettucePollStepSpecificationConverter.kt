@@ -7,13 +7,11 @@ import io.qalipsis.api.events.EventsLogger
 import io.qalipsis.api.steps.StepCreationContext
 import io.qalipsis.api.steps.StepSpecification
 import io.qalipsis.api.steps.StepSpecificationConverter
-import io.qalipsis.api.steps.datasource.DatasourceObjectConverter
 import io.qalipsis.api.steps.datasource.IterativeDatasourceStep
 import io.qalipsis.api.steps.datasource.processors.NoopDatasourceObjectProcessor
 import io.qalipsis.api.sync.asSuspended
 import io.qalipsis.plugins.redis.lettuce.configuration.RedisStatefulConnectionFactory
 import io.qalipsis.plugins.redis.lettuce.poll.converters.PollResultSetBatchConverter
-import io.qalipsis.plugins.redis.lettuce.poll.converters.PollResultSetSingleConverter
 import io.qalipsis.plugins.redis.lettuce.poll.converters.RedisToJavaConverter
 import jakarta.inject.Named
 import kotlinx.coroutines.CoroutineScope
@@ -58,33 +56,18 @@ internal class LettucePollStepSpecificationConverter(
             redisScanExecutor,
         ) { Channel(Channel.UNLIMITED) }
 
-        val converter = buildConverter(spec)
-
         val step = IterativeDatasourceStep(
             stepId,
             reader,
             NoopDatasourceObjectProcessor(),
-            converter
-        )
-        creationContext.createdStep(step)
-    }
-
-    private fun buildConverter(spec: LettucePollStepSpecificationImpl<*>): DatasourceObjectConverter<PollRawResult<*>, out Any> {
-        return if (spec.flattenOutput) {
-            PollResultSetSingleConverter(
-                redisToJavaConverter,
-                eventsLogger = eventsLogger.takeIf { spec.monitoringConfig.events },
-                meterRegistry = meterRegistry.takeIf { spec.monitoringConfig.meters },
-                spec.redisMethod.name.lowercase()
-            )
-        } else {
             PollResultSetBatchConverter(
                 redisToJavaConverter,
                 eventsLogger = eventsLogger.takeIf { spec.monitoringConfig.events },
                 meterRegistry = meterRegistry.takeIf { spec.monitoringConfig.meters },
                 spec.redisMethod.name.lowercase()
             )
-        }
+        )
+        creationContext.createdStep(step)
     }
 
     companion object {

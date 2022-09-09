@@ -56,7 +56,6 @@ internal class LettucePollStepSpecificationImplTest {
                 prop(SingletonConfiguration::bufferSize).isEqualTo(-1)
                 prop(SingletonConfiguration::idleTimeout).isEqualTo(Duration.ZERO)
             }
-            prop(LettucePollStepSpecificationImpl<*>::flattenOutput).isFalse()
             prop(LettucePollStepSpecificationImpl<*>::redisMethod).isEqualTo(RedisLettuceScanMethod.SCAN)
         }
     }
@@ -81,7 +80,7 @@ internal class LettucePollStepSpecificationImplTest {
             pollDelay(Duration.ofSeconds(2))
             keyOrPattern("test")
             broadcast(10, Duration.ofSeconds(10))
-        }.flatten()
+        }
 
         assertThat(scenario.rootSteps.first()).isInstanceOf(LettucePollStepSpecificationImpl::class).all {
             prop(LettucePollStepSpecificationImpl<*>::name).isEqualTo("my-step-complete")
@@ -107,7 +106,6 @@ internal class LettucePollStepSpecificationImplTest {
                 prop(SingletonConfiguration::bufferSize).isEqualTo(10)
                 prop(SingletonConfiguration::idleTimeout).isEqualTo(Duration.ofSeconds(10))
             }
-            prop(LettucePollStepSpecificationImpl<*>::flattenOutput).isTrue()
             prop(LettucePollStepSpecificationImpl<*>::redisMethod).isEqualTo(RedisLettuceScanMethod.SCAN)
         }
     }

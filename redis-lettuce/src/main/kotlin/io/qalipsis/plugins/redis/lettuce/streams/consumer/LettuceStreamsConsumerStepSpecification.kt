@@ -3,6 +3,7 @@ package io.qalipsis.plugins.redis.lettuce.streams.consumer
 import io.qalipsis.api.annotations.Spec
 import io.qalipsis.api.scenario.StepSpecificationRegistry
 import io.qalipsis.api.steps.AbstractStepSpecification
+import io.qalipsis.api.steps.ConfigurableStepSpecification
 import io.qalipsis.api.steps.SingletonConfiguration
 import io.qalipsis.api.steps.SingletonStepSpecification
 import io.qalipsis.api.steps.SingletonType
@@ -30,7 +31,8 @@ import javax.validation.constraints.Positive
  */
 @Spec
 interface LettuceStreamsConsumerStepSpecification : UnicastSpecification,
-    StepSpecification<Unit, LettuceStreamsConsumerResult, Flattenable<LettuceStreamsConsumedRecord, LettuceStreamsConsumerResult>> {
+    StepSpecification<Unit, LettuceStreamsConsumerResult, Flattenable<LettuceStreamsConsumedRecord, LettuceStreamsConsumerResult>>,
+    ConfigurableStepSpecification<Unit, LettuceStreamsConsumerResult, Flattenable<LettuceStreamsConsumedRecord, LettuceStreamsConsumerResult>> {
 
     /**
      * Configures the connection to the database.
