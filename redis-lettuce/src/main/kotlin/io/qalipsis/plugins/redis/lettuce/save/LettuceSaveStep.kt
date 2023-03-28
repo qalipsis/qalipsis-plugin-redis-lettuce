@@ -74,7 +74,7 @@ internal class LettuceSaveStep<I>(
 
     private var sendingFailure: Counter? = null
 
-    private val meterPrefix = "lettuce-save"
+    private val meterPrefix = "redis-lettuce-save"
 
     override suspend fun start(context: StepStartStopContext) {
         meterRegistry?.apply {

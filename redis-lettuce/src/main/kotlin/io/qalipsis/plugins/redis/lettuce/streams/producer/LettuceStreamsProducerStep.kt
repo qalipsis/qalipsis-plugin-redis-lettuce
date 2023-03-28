@@ -70,7 +70,7 @@ internal class LettuceStreamsProducerStep<I>(
 
     private var sendingFailure: Counter? = null
 
-    private val meterPrefix = "lettuce-streams"
+    private val meterPrefix = "redis-lettuce-streams"
 
     override suspend fun start(context: StepStartStopContext) {
         meterRegistry?.apply {
